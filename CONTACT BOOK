@@ -1,0 +1,161 @@
+import tkinter as tk
+from tkinter import messagebox
+import json
+import os
+
+CONTACTS_FILE = "contacts.json"
+
+# Load contacts from file
+def load_contacts():
+    if os.path.exists(CONTACTS_FILE):
+        with open(CONTACTS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+# Save contacts to file
+def save_contacts():
+    with open(CONTACTS_FILE, 'w') as f:
+        json.dump(contacts, f, indent=4)
+
+# Add new contact
+def add_contact():
+    name = name_entry.get().strip()
+    phone = phone_entry.get().strip()
+    email = email_entry.get().strip()
+    address = address_entry.get().strip()
+
+    if not name or not phone:
+        messagebox.showwarning("Input Error", "Name and Phone are required!")
+        return
+
+    contacts[name] = {"Phone": phone, "Email": email, "Address": address}
+    save_contacts()
+    messagebox.showinfo("Success", f"Contact '{name}' added.")
+    clear_entries()
+    view_contacts()
+
+# View all contacts
+def view_contacts():
+    contact_listbox.delete(0, tk.END)
+    for name, info in contacts.items():
+        contact_listbox.insert(tk.END, f"{name} | {info['Phone']}")
+
+# Search contact
+def search_contact():
+    query = search_entry.get().strip().lower()
+    contact_listbox.delete(0, tk.END)
+    for name, info in contacts.items():
+        if query in name.lower() or query in info["Phone"]:
+            contact_listbox.insert(tk.END, f"{name} | {info['Phone']}")
+
+# Delete contact
+def delete_contact():
+    selected = contact_listbox.curselection()
+    if not selected:
+        messagebox.showwarning("Select Contact", "Please select a contact to delete.")
+        return
+    contact_text = contact_listbox.get(selected[0])
+    name = contact_text.split('|')[0].strip()
+    if name in contacts:
+        confirm = messagebox.askyesno("Confirm Delete", f"Delete contact '{name}'?")
+        if confirm:
+            contacts.pop(name)
+            save_contacts()
+            view_contacts()
+
+# Update contact in a single pop-up window
+def update_contact():
+    selected = contact_listbox.curselection()
+    if not selected:
+        messagebox.showwarning("Select Contact", "Please select a contact to update.")
+        return
+
+    contact_text = contact_listbox.get(selected[0])
+    name = contact_text.split('|')[0].strip()
+
+    if name not in contacts:
+        return
+
+    # Create a new window
+    update_window = tk.Toplevel(root)
+    update_window.title(f"Update Contact - {name}")
+    update_window.geometry("350x250")
+
+    tk.Label(update_window, text="Phone").pack(pady=5)
+    phone_entry_popup = tk.Entry(update_window, width=30)
+    phone_entry_popup.insert(0, contacts[name]["Phone"])
+    phone_entry_popup.pack()
+
+    tk.Label(update_window, text="Email").pack(pady=5)
+    email_entry_popup = tk.Entry(update_window, width=30)
+    email_entry_popup.insert(0, contacts[name]["Email"])
+    email_entry_popup.pack()
+
+    tk.Label(update_window, text="Address").pack(pady=5)
+    address_entry_popup = tk.Entry(update_window, width=30)
+    address_entry_popup.insert(0, contacts[name]["Address"])
+    address_entry_popup.pack()
+
+    def save_updated_contact():
+        contacts[name]["Phone"] = phone_entry_popup.get().strip()
+        contacts[name]["Email"] = email_entry_popup.get().strip()
+        contacts[name]["Address"] = address_entry_popup.get().strip()
+        save_contacts()
+        update_window.destroy()
+        view_contacts()
+        messagebox.showinfo("Updated", f"Contact '{name}' updated.")
+
+    tk.Button(update_window, text="Save Changes", command=save_updated_contact).pack(pady=15)
+
+# Clear input fields
+def clear_entries():
+    name_entry.delete(0, tk.END)
+    phone_entry.delete(0, tk.END)
+    email_entry.delete(0, tk.END)
+    address_entry.delete(0, tk.END)
+
+# GUI setup
+root = tk.Tk()
+root.title("Contact Book")
+root.geometry("600x500")
+root.config(bg="#f0f0f0")
+
+contacts = load_contacts()
+
+# Input fields
+tk.Label(root, text="Name").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+name_entry = tk.Entry(root, width=30)
+name_entry.grid(row=0, column=1, padx=10)
+
+tk.Label(root, text="Phone").grid(row=1, column=0, padx=10, pady=5, sticky="w")
+phone_entry = tk.Entry(root, width=30)
+phone_entry.grid(row=1, column=1, padx=10)
+
+tk.Label(root, text="Email").grid(row=2, column=0, padx=10, pady=5, sticky="w")
+email_entry = tk.Entry(root, width=30)
+email_entry.grid(row=2, column=1, padx=10)
+
+tk.Label(root, text="Address").grid(row=3, column=0, padx=10, pady=5, sticky="w")
+address_entry = tk.Entry(root, width=30)
+address_entry.grid(row=3, column=1, padx=10)
+
+# Buttons
+tk.Button(root, text="Add Contact", width=15, command=add_contact).grid(row=4, column=0, pady=10)
+tk.Button(root, text="Update Contact", width=15, command=update_contact).grid(row=4, column=1, pady=10)
+tk.Button(root, text="Delete Contact", width=15, command=delete_contact).grid(row=5, column=0)
+tk.Button(root, text="Clear", width=15, command=clear_entries).grid(row=5, column=1)
+
+# Search
+tk.Label(root, text="Search").grid(row=6, column=0, padx=10, pady=5, sticky="w")
+search_entry = tk.Entry(root, width=30)
+search_entry.grid(row=6, column=1, padx=10)
+tk.Button(root, text="Search", command=search_contact).grid(row=7, column=1, pady=5)
+
+# Listbox
+contact_listbox = tk.Listbox(root, height=10, width=55)
+contact_listbox.grid(row=8, column=0, columnspan=2, padx=10, pady=10)
+
+# Load contacts initially
+view_contacts()
+
+root.mainloop()
